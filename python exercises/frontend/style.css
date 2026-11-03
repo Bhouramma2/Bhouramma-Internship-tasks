@@ -1,0 +1,36 @@
+
+body {
+    background-color:purple;
+    text-align: center;
+    font-family: Arial;
+}
+
+h1 {
+    color: paleturquoise;
+}
+
+.form {
+    background-color: wheat;
+    width: 400px;
+    margin: auto;
+    padding: 20px;
+}
+
+label {
+    color:black;
+}
+
+input {
+    padding: 10px;
+    margin: 10px;
+}
+
+button {
+    background-color:green;
+    color: royalblue;
+    padding: 10px;
+}
+
+a {
+    color: lch(from color lightness chrome hue alpha);
+}
