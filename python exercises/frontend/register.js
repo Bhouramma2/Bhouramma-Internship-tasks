@@ -1,10 +1,10 @@
 function register() {
-    let name = document.getElementById("name").value;
+    let username = document.getElementById("name").value;
 
-    if (name == "") {
-        alert("Please enter your name");
+    if (username.length > 0) {
+        alert("Welcome " + username);
     }
     else {
-        alert("Registration successful!");
+        alert("Name is required!");
     }
 }

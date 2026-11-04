@@ -1,36 +1,38 @@
+
 <html>
 <head>
-    <title>Registration Page</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Register Form</title>
 </head>
 
-<body>
+<body style="text-align:center; background-color:lightyellow;">
 
     <h2>Registration Form</h2>
 
-    <label>Name:</label>
-    <input type="text" id="name" placeholder="Enter name">
+    <form onsubmit="register(event)">
 
-    <br><br>
+        <input type="text" id="name" placeholder="Full Name" required>
+        <br><br>
 
-    <label>Email:</label>
-    <input type="email" placeholder="Enter email">
+        <input type="email" id="email" placeholder="Email" required>
+        <br><br>
 
-    <br><br>
+        <input type="password" id="password" placeholder="Password" required>
+        <br><br>
 
-    <label>Password:</label>
-    <input type="password" placeholder="Enter password">
+        <input type="tel" id="phone" placeholder="Phone Number">
+        <br><br>
 
-    <br><br>
+        <button type="submit">Register</button>
 
-    <label>Phone:</label>
-    <input type="text" placeholder="Enter phone number">
+    </form>
 
-    <br><br>
+    <script>
+        function register(event) {
+            event.preventDefault();
 
-    <button onclick="register()">Register</button>
-
-    <script src="register.js"></script>
+            alert("Registration Successful!");
+        }
+    </script>
 
 </body>
 </html>
