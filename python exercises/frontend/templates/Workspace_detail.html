@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Workspace Details</title>
+    <link rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+    <h1>Workspace Details</h1>
+
+    <h2>{{ workspace['workspace_name'] }}</h2>
+
+    <p>Workspace ID: {{ workspace['id'] }}</p>
+
+    <p>Location: {{ workspace['location'] }}</p>
+
+    <a href="/workspaces">Back to Workspaces</a>
+
+</body>
+</html>
