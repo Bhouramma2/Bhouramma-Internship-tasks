@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Seat Availability</title>
+    <style>
+        body {
+            font-family: Arial;
+            background: #f2f4f8;
+            padding: 20px;
+        }
+        .seat {
+            background: white;
+            padding: 15px;
+            margin: 12px 0;
+            border-radius: 8px;
+        }
+        .available {
+            color: green;
+            font-weight: bold;
+        }
+        .booked {
+            color: red;
+            font-weight: bold;
+        }
+        button {
+            padding: 10px 18px;
+            background: #1769aa;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:disabled {
+            background: gray;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+
+<h2>{{ workspace['workspace_name'] }} - Seats</h2>
+
+<p>Location: {{ workspace['location'] }}</p>
+
+<h3>Seat Summary</h3>
+
+<p>Total Seats: {{ total_seats }}</p>
+
+<p>Available Seats: {{ available_seats }}</p>
+
+<p>Booked Seats: {{ booked_seats }}</p>
+
+{% with messages = get_flashed_messages() %}
+    {% for message in messages %}
+        <p>{{ message }}</p>
+    {% endfor %}
+{% endwith %}
+
+<h3>Seat Details</h3>
+
+{% for seat in seats %}
+
+<div class="seat">
+
+    <h4>Seat Number: {{ seat['seat_number'] }}</h4>
+
+    {% if seat['status'] == 'Available' %}
+
+        <p class="available">Available</p>
+
+        <form method="POST"
+              action="{{ url_for('book_seat',
+                                 seat_id=seat['id']) }}">
+
+            <button type="submit">Book Seat</button>
+
+        </form>
+
+    {% else %}
+
+        <p class="booked">Booked</p>
+
+        <button type="button" disabled>Not Available</button>
+
+    {% endif %}
+
+</div>
+
+{% else %}
+
+<p>No seats found.</p>
+
+{% endfor %}
+
+<br>
+
+<a href="{{ url_for('workspaces') }}">Back to Workspaces</a> |
+<a href="{{ url_for('my_bookings') }}">My Bookings</a>
+
+</body>
+</html>

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Workspace Details</title>
+    <style>
+        body {
+            font-family: Arial;
+            background: #f2f4f8;
+            padding: 40px;
+        }
+        .container {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            max-width: 500px;
+            margin: auto;
+        }
+        button {
+            padding: 12px 20px;
+            background: #1769aa;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <h2>Workspace Details</h2>
+
+    <h3>{{ workspace['workspace_name'] }}</h3>
+
+    <p>Workspace ID: {{ workspace['id'] }}</p>
+
+    <p>Location: {{ workspace['location'] }}</p>
+
+    <a href="{{ url_for('display_seats',
+                        workspace_id=workspace['id']) }}">
+        <button type="button">View Available Seats</button>
+    </a>
+
+    <br><br>
+
+    <a href="{{ url_for('workspaces') }}">Back to Workspaces</a>
+
+</div>
+
+</body>
+</html>
