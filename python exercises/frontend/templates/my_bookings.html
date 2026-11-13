@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>My Bookings</title>
+    <style>
+        body {
+            font-family: Arial;
+            background: #f2f4f8;
+            padding: 20px;
+        }
+        .booking {
+            background: white;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 10px;
+        }
+        button {
+            padding: 10px 18px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<h2>My Bookings</h2>
+
+{% with messages = get_flashed_messages() %}
+    {% for message in messages %}
+        <p>{{ message }}</p>
+    {% endfor %}
+{% endwith %}
+
+{% for booking in bookings %}
+
+<div class="booking">
+
+    <h3>{{ booking['workspace_name'] }}</h3>
+
+    <p>Location: {{ booking['location'] }}</p>
+
+    <p>Seat Number: {{ booking['seat_number'] }}</p>
+
+    <p>Booking ID: {{ booking['booking_id'] }}</p>
+
+    <p>Booking Date: {{ booking['booking_date'] }}</p>
+
+    <p>Status: {{ booking['status'] }}</p>
+
+    {% if booking['status'] == 'Booked' %}
+
+        <form method="POST"
+              action="{{ url_for('cancel_booking',
+                                 booking_id=booking['booking_id']) }}">
+
+            <button type="submit">Cancel Booking</button>
+
+        </form>
+
+    {% endif %}
+
+</div>
+
+{% else %}
+
+<p>You have not made any bookings yet.</p>
+
+{% endfor %}
+
+<br>
+
+<a href="{{ url_for('workspaces') }}">Back to Workspaces</a>
+
+</body>
+</html>
