@@ -1,0 +1,133 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Manage Seats</title>
+</head>
+<body>
+
+    <h1>Admin - Manage Seats</h1>
+
+    <h2>Add New Seat</h2>
+
+    <form action="/admin/seats/add" method="POST">
+
+        <label>Seat Number:</label>
+        <input type="text" name="seat_number" required>
+
+        <br><br>
+
+        <label>Select Workspace:</label>
+
+        <select name="workspace_id" required>
+            {% for workspace in workspaces %}
+            <option value="{{ workspace.id }}">
+                {{ workspace.workspace_name }}
+            </option>
+            {% endfor %}
+        </select>
+
+        <br><br>
+
+        <button type="submit">Add Seat</button>
+
+    </form>
+
+    <hr>
+
+    <h2>All Seats</h2>
+
+    <table border="1" cellpadding="10">
+
+        <tr>
+            <th>Seat ID</th>
+            <th>Seat Number</th>
+            <th>Workspace</th>
+            <th>Status</th>
+            <th>Update Seat</th>
+            <th>Deactivate Seat</th>
+        </tr>
+
+        {% for seat in seats %}
+
+        <tr>
+
+            <td>{{ seat.id }}</td>
+
+            <td>{{ seat.seat_number }}</td>
+
+            <td>{{ seat.workspace_name }}</td>
+
+            <td>{{ seat.status }}</td>
+
+            <td>
+                {% if seat.status != 'Booked' and seat.status != 'Inactive' %}
+
+                <form action="/admin/seats/update/{{ seat.id }}"
+                      method="POST">
+
+                    <input type="text"
+                           name="seat_number"
+                           value="{{ seat.seat_number }}"
+                           required>
+
+                    <select name="workspace_id" required>
+
+                        {% for workspace in workspaces %}
+
+                        <option value="{{ workspace.id }}"
+                        {% if workspace.id == seat.workspace_id %}
+                        selected
+                        {% endif %}>
+
+                            {{ workspace.workspace_name }}
+
+                        </option>
+
+                        {% endfor %}
+
+                    </select>
+
+                    <button type="submit">Update</button>
+
+                </form>
+
+                {% else %}
+                    Not available
+                {% endif %}
+            </td>
+
+            <td>
+
+                {% if seat.status != 'Booked' and seat.status != 'Inactive' %}
+
+                <form action="/admin/seats/deactivate/{{ seat.id }}"
+                      method="POST">
+
+                    <button type="submit"
+                    onclick="return confirm('Are you sure you want to deactivate this seat?')">
+
+                        Deactivate
+
+                    </button>
+
+                </form>
+
+                {% else %}
+                    Not available
+                {% endif %}
+
+            </td>
+
+        </tr>
+
+        {% endfor %}
+
+    </table>
+
+    <br>
+
+    <a href="/admin">Back to Admin Dashboard</a>
+
+</body>
+</html>
