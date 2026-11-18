@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 import sqlite3
 import os
 import re
+import logging
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -10,6 +11,12 @@ app.secret_key = "workspace_booking_secret_key"
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATABASE = os.path.join(BASE_DIR, "users.db")
+
+logging.basicConfig(
+    filename=os.path.join(BASE_DIR, "app.log"),
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s"
+)
 
 
 # ---------------- DATABASE CONNECTION ----------------
@@ -20,11 +27,9 @@ def connect_db():
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
 
-
 # ---------------- CREATE TABLES ----------------
 
 def create_table():
-
     conn = connect_db()
     cursor = conn.cursor()
 
@@ -46,7 +51,6 @@ def create_table():
             location TEXT NOT NULL
         )
     """)
-
 
     # Add admin role to existing users table
     user_columns = [
@@ -73,7 +77,6 @@ def create_table():
             ALTER TABLE workspaces
             ADD COLUMN is_active INTEGER DEFAULT 1
         """)
-
 
     # Seats table
     cursor.execute("""
@@ -150,8 +153,8 @@ def create_table():
             """, (workspace_id, seat_number))
 
     conn.commit()
+    logging.info("User registered successfully")
     conn.close()
-
 
 # ---------------- HOME PAGE ----------------
 
@@ -162,7 +165,6 @@ def home():
         return redirect(url_for("workspaces"))
 
     return redirect(url_for("login"))
-
 
 # ---------------- REGISTER ----------------
 
@@ -199,11 +201,12 @@ def register():
             """, (name, email, hashed_password))
 
             conn.commit()
+            logging.info("Seat booked successfully")
             flash("Registration successful. Please login.")
 
         except sqlite3.IntegrityError:
-
             conn.rollback()
+            logging.warning("Duplicate email registration attempted")
             flash("Email already registered.")
 
         finally:
@@ -212,7 +215,6 @@ def register():
         return redirect(url_for("login"))
 
     return render_template("register.html")
-
 
 # ---------------- LOGIN ----------------
 
@@ -254,7 +256,6 @@ def logout():
 
     return redirect(url_for("login"))
 
-
 # ---------------- DASHBOARD ----------------
 
 @app.route("/dashboard")
@@ -264,8 +265,6 @@ def dashboard():
         return redirect(url_for("login"))
 
     return redirect(url_for("workspaces"))
-
-
 
 # ---------------- ADMIN WORKSPACE PAGE ----------------
 
@@ -288,9 +287,6 @@ def admin_workspaces():
         "admin_workspaces.html",
         workspaces=workspaces
     )
-
-
-
 
 # ---------------- ADD WORKSPACE ----------------
 
@@ -320,7 +316,6 @@ def add_workspace():
     flash("Workspace added successfully!")
 
     return redirect(url_for("admin_workspaces"))
-
 
 # ---------------- WORKSPACES ----------------
 
@@ -377,7 +372,6 @@ def workspaces():
         search=search
     )
 
-
 # ---------------- WORKSPACE DETAILS ----------------
 
 @app.route("/workspace/<int:workspace_id>")
@@ -405,7 +399,6 @@ def workspace_details(workspace_id):
         "workspace_details.html",
         workspace=workspace
     )
-
 
 # ---------------- DISPLAY SEATS ----------------
 
@@ -457,7 +450,6 @@ def display_seats(workspace_id):
         available_seats=available_seats,
         booked_seats=booked_seats
     )
-
 
 # ---------------- BOOK SEAT ----------------
 
@@ -568,7 +560,6 @@ def book_seat(seat_id):
 
         conn.close()
 
-
 # ---------------- MY BOOKINGS ----------------
 
 @app.route("/my-bookings")
@@ -607,7 +598,6 @@ def my_bookings():
         "my_bookings.html",
         bookings=bookings
     )
-
 
 # ---------------- CANCEL BOOKING ----------------
 
@@ -715,10 +705,6 @@ def admin_dashboard():
         active_bookings=active_bookings
     )
 
-
-
-
-
 # ---------------- ADMIN MANAGE SEATS ----------------
 
 @app.route("/admin/seats")
@@ -752,7 +738,6 @@ def admin_seats():
         seats=seats,
         workspaces=workspaces
     )
-
 
 # ---------------- ADD NEW SEAT ----------------
 
@@ -788,8 +773,6 @@ def add_admin_seat():
     conn.close()
 
     return redirect(url_for("admin_seats"))
-
-
 
 # ---------------- UPDATE SEAT ----------------
 
@@ -831,9 +814,6 @@ def update_admin_seat(seat_id):
 
     return redirect(url_for("admin_seats"))
 
-
-
-
 # ---------------- DEACTIVATE SEAT ----------------
 
 @app.route("/admin/seats/deactivate/<int:seat_id>", methods=["POST"])
@@ -868,14 +848,23 @@ def deactivate_admin_seat(seat_id):
 
     return redirect(url_for("admin_seats"))
 
-
 # ---------------- RUN APPLICATION ----------------
+@app.errorhandler(404)
+def page_not_found(error):
+    logging.warning("Page not found")
+    return "Page Not Found", 404
+
+
+@app.errorhandler(500)
+def server_error(error):
+    logging.error("Internal Server Error")
+    return "Something went wrong", 500
 
 if __name__ == "__main__":
 
     create_table()
 
-    app.run(debug=True)
+    app.run(debug=False)
 
 
     
