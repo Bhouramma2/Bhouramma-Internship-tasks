@@ -1,84 +1,433 @@
+
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Workspaces</title>
+    <title>Workspace Dashboard</title>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
-            font-family: Arial;
-            background: #f2f4f8;
-            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: #f4f7fb;
+            color: #263445;
         }
-        .workspace {
+
+        /* Navigation */
+        .navbar {
+            background: #172b4d;
+            padding: 18px 7%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .logo {
+            color: white;
+            font-size: 23px;
+            font-weight: bold;
+        }
+
+        .nav-links a {
+            color: #ffffff;
+            text-decoration: none;
+            margin-left: 22px;
+            font-size: 14px;
+        }
+
+        .nav-links a:hover {
+            color: #65c6f0;
+        }
+
+        /* Main container */
+        .container {
+            width: 86%;
+            max-width: 1200px;
+            margin: 35px auto;
+        }
+
+        /* Welcome section */
+        .welcome {
+            background: linear-gradient(120deg, #1769aa, #304c89);
+            color: white;
+            padding: 35px;
+            border-radius: 14px;
+            margin-bottom: 30px;
+        }
+
+        .welcome h1 {
+            font-size: 28px;
+            margin-bottom: 12px;
+        }
+
+        .welcome p {
+            color: #e1edff;
+            font-size: 15px;
+        }
+
+        /* Search section */
+        .search-section {
             background: white;
-            padding: 20px;
-            margin: 15px 0;
-            border-radius: 10px;
+            padding: 22px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            box-shadow: 0 3px 12px rgba(0,0,0,0.04);
         }
-        button {
-            padding: 10px 18px;
+
+        .search-section h2 {
+            font-size: 19px;
+            margin-bottom: 15px;
+        }
+
+        .search-form {
+            display: flex;
+            gap: 10px;
+        }
+
+        .search-form input {
+            flex: 1;
+            padding: 13px;
+            border: 1px solid #d7dfeb;
+            border-radius: 7px;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .search-form input:focus {
+            border-color: #1769aa;
+        }
+
+        .search-form button {
             background: #1769aa;
             color: white;
             border: none;
+            padding: 12px 25px;
+            border-radius: 7px;
             cursor: pointer;
+            font-size: 14px;
+        }
+
+        .search-form button:hover {
+            background: #125487;
+        }
+
+        /* Section heading */
+        .section-heading {
+            margin-bottom: 20px;
+        }
+
+        .section-heading h2 {
+            font-size: 23px;
+            margin-bottom: 7px;
+        }
+
+        .section-heading p {
+            color: #718096;
+            font-size: 14px;
+        }
+
+        /* Workspace cards */
+        .workspace-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+            gap: 22px;
+        }
+
+        .workspace-card {
+            background: white;
+            border-radius: 13px;
+            padding: 24px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            border: 1px solid #edf0f5;
+            transition: 0.3s;
+        }
+
+        .workspace-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 9px 22px rgba(0,0,0,0.09);
+        }
+
+        .workspace-icon {
+            width: 48px;
+            height: 48px;
+            background: #e8f2ff;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 25px;
+            margin-bottom: 17px;
+        }
+
+        .workspace-card h3 {
+            font-size: 20px;
+            margin-bottom: 10px;
+            color: #172b4d;
+        }
+
+        .location {
+            color: #718096;
+            font-size: 14px;
+            margin-bottom: 22px;
+        }
+
+        /* Seat statistics */
+        .seat-info {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 22px;
+        }
+
+        .seat-box {
+            background: #f4f7fb;
+            padding: 13px 5px;
+            text-align: center;
+            border-radius: 8px;
+        }
+
+        .seat-box h4 {
+            font-size: 20px;
+            margin-bottom: 6px;
+            color: #1769aa;
+        }
+
+        .seat-box p {
+            font-size: 11px;
+            color: #718096;
+        }
+
+        .available {
+            color: #16834a !important;
+        }
+
+        /* Card buttons */
+        .card-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .card-buttons a {
+            flex: 1;
+            text-align: center;
+            padding: 12px 8px;
+            border-radius: 7px;
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: bold;
+        }
+
+        .details-btn {
+            background: #e8f2ff;
+            color: #1769aa;
+        }
+
+        .seats-btn {
+            background: #1769aa;
+            color: white;
+        }
+
+        .details-btn:hover {
+            background: #d5e7ff;
+        }
+
+        .seats-btn:hover {
+            background: #125487;
+        }
+
+        /* Flash messages */
+        .message {
+            background: #e5f7ec;
+            color: #16834a;
+            padding: 13px;
+            border-radius: 7px;
+            margin-bottom: 20px;
+        }
+
+        /* Empty state */
+        .empty {
+            background: white;
+            padding: 35px;
+            text-align: center;
+            border-radius: 12px;
+            color: #718096;
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 25px;
+            margin-top: 45px;
+            background: #172b4d;
+            color: #dce6f5;
+            font-size: 13px;
+        }
+
+        /* Mobile view */
+        @media (max-width: 600px) {
+            .navbar {
+                padding: 18px 5%;
+            }
+
+            .nav-links a {
+                margin-left: 10px;
+            }
+
+            .container {
+                width: 92%;
+            }
+
+            .welcome {
+                padding: 25px;
+            }
+
+            .welcome h1 {
+                font-size: 23px;
+            }
+
+            .search-form {
+                flex-direction: column;
+            }
+
+            .search-form button {
+                width: 100%;
+            }
         }
     </style>
 </head>
+
 <body>
 
-<h2>Welcome, {{ session.get('user_name') }}</h2>
+    <!-- Navigation -->
+    <div class="navbar">
+        <div class="logo">WorkSpace</div>
 
-<a href="{{ url_for('my_bookings') }}">My Bookings</a> |
-<a href="{{ url_for('logout') }}">Logout</a>
+        <div class="nav-links">
+            <a href="{{ url_for('workspaces') }}">Home</a>
+            <a href="{{ url_for('my_bookings') }}">My Bookings</a>
+            <a href="{{ url_for('logout') }}">Logout</a>
+        </div>
+    </div>
 
-<h2>Available Workspaces</h2>
+    <div class="container">
 
-{% with messages = get_flashed_messages() %}
-    {% for message in messages %}
-        <p>{{ message }}</p>
-    {% endfor %}
-{% endwith %}
+        <!-- Welcome -->
+        <div class="welcome">
+            <h1>Welcome, {{ session.get('user_name') }}!</h1>
+            <p>Find your perfect workspace and book your seat today.</p>
+        </div>
 
-<form method="GET" action="{{ url_for('workspaces') }}">
-    <input type="text" name="search"
-           placeholder="Search workspace or location"
-           value="{{ search }}">
+        <!-- Flash messages -->
+        {% with messages = get_flashed_messages() %}
+            {% for message in messages %}
+                <div class="message">{{ message }}</div>
+            {% endfor %}
+        {% endwith %}
 
-    <button type="submit">Search</button>
-</form>
+        <!-- Search -->
+        <div class="search-section">
+            <h2>Find Your Workspace</h2>
 
-{% for workspace in workspaces %}
+            <form method="GET"
+                  action="{{ url_for('workspaces') }}"
+                  class="search-form">
 
-<div class="workspace">
+                <input type="text"
+                       name="search"
+                       placeholder="Search by workspace name or location..."
+                       value="{{ search }}">
 
-    <h3>{{ workspace['workspace_name'] }}</h3>
+                <button type="submit">Search</button>
+            </form>
+        </div>
 
-    <p>Location: {{ workspace['location'] }}</p>
+        <!-- Workspace list -->
+        <div class="section-heading">
+            <h2>Available Workspaces</h2>
+            <p>Explore our workspaces and check available seats.</p>
+        </div>
 
-    <p>Total Seats: {{ workspace['total_seats'] }}</p>
+        {% if workspaces %}
 
-    <p>Available Seats: {{ workspace['available_seats'] }}</p>
+        <div class="workspace-grid">
 
-    <p>Booked Seats: {{ workspace['booked_seats'] }}</p>
+            {% for workspace in workspaces %}
 
-    <a href="{{ url_for('workspace_details',
-                        workspace_id=workspace['id']) }}">
-        View Details
-    </a>
+            <div class="workspace-card">
 
-    <br><br>
+                <div class="workspace-icon">🏢</div>
 
-    <a href="{{ url_for('display_seats',
-                        workspace_id=workspace['id']) }}">
-        <button type="button">View Seats</button>
-    </a>
+                <h3>{{ workspace['workspace_name'] }}</h3>
 
-</div>
+                <p class="location">
+                    📍 {{ workspace['location'] }}
+                </p>
 
-{% else %}
+                <div class="seat-info">
 
-<p>No workspaces found.</p>
+                    <div class="seat-box">
+                        <h4>{{ workspace['total_seats'] }}</h4>
+                        <p>Total Seats</p>
+                    </div>
 
-{% endfor %}
+                    <div class="seat-box">
+                        <h4 class="available">
+                            {{ workspace['available_seats'] }}
+                        </h4>
+                        <p>Available</p>
+                    </div>
+
+                    <div class="seat-box">
+                        <h4>{{ workspace['booked_seats'] }}</h4>
+                        <p>Booked</p>
+                    </div>
+
+                </div>
+
+                <div class="card-buttons">
+
+                    <a class="details-btn"
+                       href="{{ url_for('workspace_details',
+                                        workspace_id=workspace['id']) }}">
+                        View Details
+                    </a>
+
+                    <a class="seats-btn"
+                       href="{{ url_for('display_seats',
+                                        workspace_id=workspace['id']) }}">
+                        View Seats
+                    </a>
+
+                </div>
+
+            </div>
+
+            {% endfor %}
+
+        </div>
+
+        {% else %}
+
+        <div class="empty">
+            <h3>No Workspaces Found</h3>
+            <p>Try searching with another workspace name or location.</p>
+        </div>
+
+        {% endif %}
+
+    </div>
+
+    <footer>
+        © 2026 WorkSpace Booking System | All Rights Reserved
+    </footer>
 
 </body>
 </html>

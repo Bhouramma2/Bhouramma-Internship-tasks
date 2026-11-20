@@ -1,0 +1,108 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Booking Details</title>
+
+    <style>
+        body {
+            font-family: Arial;
+            background: #f1f5fb;
+            margin: 0;
+            padding: 40px;
+        }
+
+        .container {
+            max-width: 450px;
+            margin: auto;
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px #d5dce8;
+        }
+
+        h2 {
+            text-align: center;
+            color: #244b7a;
+        }
+
+        label {
+            display: block;
+            margin-top: 15px;
+            font-weight: bold;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            margin-top: 7px;
+            box-sizing: border-box;
+            border: 1px solid #ccd5e0;
+            border-radius: 7px;
+        }
+
+        button {
+            width: 100%;
+            padding: 13px;
+            margin-top: 22px;
+            background: #245b91;
+            color: white;
+            border: none;
+            border-radius: 7px;
+            cursor: pointer;
+        }
+
+        .details {
+            background: #edf5ff;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h2>Complete Your Booking</h2>
+    {% with messages = get_flashed_messages() %}
+    {% for message in messages %}
+        <p style="color:red; text-align:center;">
+            {{ message }}
+        </p>
+    {% endfor %}
+{% endwith %}
+
+    <div class="details">
+        <p><b>Workspace:</b> {{ seat.workspace_name }}</p>
+        <p><b>Location:</b> {{ seat.location }}</p>
+        <p><b>Seat Number:</b> {{ seat.seat_number }}</p>
+    </div>
+
+    <form action="{{ url_for('book_seat', seat_id=seat['id']) }}" method="POST">
+
+        <label>Full Name</label>
+        <input type="text" name="name"
+               value="{{ user.name }}" required>
+
+        <label>Email Address</label>
+        <input type="email" name="email"
+               value="{{ user.email }}" required>
+
+        <label>Phone Number</label>
+        <input type="tel" name="phone_number"
+               pattern="[0-9]{10}"
+               maxlength="10"
+               minlength="10"
+               placeholder="Enter 10-digit number"
+               required>
+
+        <button type="submit">Confirm Booking</button>
+
+    </form>
+
+</div>
+
+</body>
+</html>

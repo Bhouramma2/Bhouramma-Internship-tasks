@@ -1,0 +1,264 @@
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background: #f4f7fb;
+    color: #263445;
+}
+
+/* Navigation */
+.navbar {
+    background: #172b4d;
+    padding: 18px 7%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.logo {
+    color: white;
+    font-size: 23px;
+    font-weight: bold;
+}
+
+.nav-links a {
+    color: white;
+    text-decoration: none;
+    margin-left: 22px;
+    font-size: 14px;
+}
+
+.nav-links a:hover {
+    color: #65c6f0;
+}
+
+/* Main container */
+.container {
+    width: 86%;
+    max-width: 1200px;
+    margin: 35px auto;
+}
+
+/* Welcome section */
+.welcome {
+    background: linear-gradient(120deg, #1769aa, #304c89);
+    color: white;
+    padding: 35px;
+    border-radius: 14px;
+    margin-bottom: 30px;
+}
+
+.welcome h1 {
+    font-size: 28px;
+    margin-bottom: 12px;
+}
+
+.welcome p {
+    color: #e1edff;
+}
+
+/* Search */
+.search-section {
+    background: white;
+    padding: 22px;
+    border-radius: 12px;
+    margin-bottom: 30px;
+}
+
+.search-section h2 {
+    margin-bottom: 15px;
+}
+
+.search-form {
+    display: flex;
+    gap: 10px;
+}
+
+.search-form input {
+    flex: 1;
+    padding: 13px;
+    border: 1px solid #d7dfeb;
+    border-radius: 7px;
+}
+
+.search-form button {
+    background: #1769aa;
+    color: white;
+    border: none;
+    padding: 12px 25px;
+    border-radius: 7px;
+    cursor: pointer;
+}
+
+/* Workspace heading */
+.section-heading {
+    margin-bottom: 20px;
+}
+
+.section-heading h2 {
+    margin-bottom: 7px;
+}
+
+.section-heading p {
+    color: #718096;
+}
+
+/* Workspace cards */
+.workspace-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+    gap: 22px;
+}
+
+.workspace-card {
+    background: white;
+    border-radius: 13px;
+    padding: 24px;
+    border: 1px solid #edf0f5;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    transition: 0.3s;
+}
+
+.workspace-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 9px 22px rgba(0,0,0,0.09);
+}
+
+.workspace-icon {
+    width: 48px;
+    height: 48px;
+    background: #e8f2ff;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 25px;
+    margin-bottom: 17px;
+}
+
+.workspace-card h3 {
+    margin-bottom: 10px;
+    color: #172b4d;
+}
+
+.location {
+    color: #718096;
+    margin-bottom: 22px;
+}
+
+/* Seat information */
+.seat-info {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 22px;
+}
+
+.seat-box {
+    background: #f4f7fb;
+    padding: 13px 5px;
+    text-align: center;
+    border-radius: 8px;
+}
+
+.seat-box h4 {
+    font-size: 20px;
+    margin-bottom: 6px;
+    color: #1769aa;
+}
+
+.seat-box p {
+    font-size: 11px;
+    color: #718096;
+}
+
+.available {
+    color: #16834a !important;
+}
+
+/* Buttons */
+.card-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.card-buttons a {
+    flex: 1;
+    text-align: center;
+    padding: 12px 8px;
+    border-radius: 7px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: bold;
+}
+
+.details-btn {
+    background: #e8f2ff;
+    color: #1769aa;
+}
+
+.seats-btn {
+    background: #1769aa;
+    color: white;
+}
+
+/* Messages */
+.message {
+    background: #e5f7ec;
+    color: #16834a;
+    padding: 13px;
+    border-radius: 7px;
+    margin-bottom: 20px;
+}
+
+/* Empty message */
+.empty {
+    background: white;
+    padding: 35px;
+    text-align: center;
+    border-radius: 12px;
+    color: #718096;
+}
+
+/* Footer */
+footer {
+    text-align: center;
+    padding: 25px;
+    margin-top: 45px;
+    background: #172b4d;
+    color: white;
+}
+
+/* Mobile screen */
+@media (max-width: 600px) {
+    .navbar {
+        padding: 18px 5%;
+    }
+
+    .nav-links a {
+        margin-left: 10px;
+    }
+
+    .container {
+        width: 92%;
+    }
+
+    .welcome {
+        padding: 25px;
+    }
+
+    .search-form {
+        flex-direction: column;
+    }
+
+    .search-form button {
+        width: 100%;
+    }
+}

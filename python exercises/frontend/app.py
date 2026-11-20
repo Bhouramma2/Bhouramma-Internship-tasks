@@ -27,7 +27,8 @@ def connect_db():
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
 
-# ---------------- CREATE TABLES ----------------
+
+# ---------------- CREATE TABLES AND UPDATE OLD DATABASE ----------------
 
 def create_table():
     conn = connect_db()
@@ -39,7 +40,8 @@ def create_table():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
             email TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL
+            password TEXT NOT NULL,
+            role TEXT DEFAULT 'user'
         )
     """)
 
@@ -48,35 +50,10 @@ def create_table():
         CREATE TABLE IF NOT EXISTS workspaces (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             workspace_name TEXT NOT NULL,
-            location TEXT NOT NULL
+            location TEXT NOT NULL,
+            is_active INTEGER DEFAULT 1
         )
     """)
-
-    # Add admin role to existing users table
-    user_columns = [
-        row["name"] for row in cursor.execute(
-            "PRAGMA table_info(users)"
-        ).fetchall()
-    ]
-
-    if "role" not in user_columns:
-        cursor.execute("""
-            ALTER TABLE users
-            ADD COLUMN role TEXT DEFAULT 'user'
-        """)
-
-    # Add active status to existing workspaces table
-    workspace_columns = [
-        row["name"] for row in cursor.execute(
-            "PRAGMA table_info(workspaces)"
-        ).fetchall()
-    ]
-
-    if "is_active" not in workspace_columns:
-        cursor.execute("""
-            ALTER TABLE workspaces
-            ADD COLUMN is_active INTEGER DEFAULT 1
-        """)
 
     # Seats table
     cursor.execute("""
@@ -85,17 +62,12 @@ def create_table():
             workspace_id INTEGER NOT NULL,
             seat_number TEXT NOT NULL,
             status TEXT DEFAULT 'Available',
+            gender_section TEXT DEFAULT 'Male',
             FOREIGN KEY (workspace_id) REFERENCES workspaces(id)
         )
     """)
 
-    # Prevent duplicate seats in the same workspace
-    cursor.execute("""
-        CREATE UNIQUE INDEX IF NOT EXISTS unique_workspace_seat
-        ON seats(workspace_id, seat_number)
-    """)
-
-    # Bookings table
+    # Bookings table (used when the database is created for the first time)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS bookings (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -103,9 +75,35 @@ def create_table():
             seat_id INTEGER NOT NULL,
             booking_date TEXT NOT NULL,
             status TEXT DEFAULT 'Booked',
+            name TEXT,
+            email TEXT,
+            phone_number TEXT,
             FOREIGN KEY (user_id) REFERENCES users(id),
             FOREIGN KEY (seat_id) REFERENCES seats(id)
         )
+    """)
+
+    # IMPORTANT:
+    # CREATE TABLE IF NOT EXISTS does not add columns to an old table.
+    # Add missing booking-detail columns to an existing database.
+    booking_columns = {
+        row["name"]
+        for row in conn.execute("PRAGMA table_info(bookings)").fetchall()
+    }
+
+    if "name" not in booking_columns:
+        cursor.execute("ALTER TABLE bookings ADD COLUMN name TEXT")
+
+    if "email" not in booking_columns:
+        cursor.execute("ALTER TABLE bookings ADD COLUMN email TEXT")
+
+    if "phone_number" not in booking_columns:
+        cursor.execute("ALTER TABLE bookings ADD COLUMN phone_number TEXT")
+
+    # Prevent duplicate seats in the same workspace
+    cursor.execute("""
+        CREATE UNIQUE INDEX IF NOT EXISTS unique_workspace_seat
+        ON seats(workspace_id, seat_number)
     """)
 
     # Prevent two active bookings for the same seat
@@ -115,64 +113,25 @@ def create_table():
         WHERE status = 'Booked'
     """)
 
-    # Insert sample workspaces if empty
-    workspace_count = cursor.execute(
-        "SELECT COUNT(*) FROM workspaces"
-    ).fetchone()[0]
-
-    if workspace_count == 0:
-
-        sample_workspaces = [
-            ("Tech Workspace", "Bangalore"),
-            ("Training Room", "Belagavi"),
-            ("Meeting Room", "Mysore")
-        ]
-
-        cursor.executemany("""
-            INSERT INTO workspaces (workspace_name, location)
-            VALUES (?, ?)
-        """, sample_workspaces)
-
-    # Insert 5 sample seats for each workspace
-    workspaces = cursor.execute(
-        "SELECT id FROM workspaces"
-    ).fetchall()
-
-    for workspace in workspaces:
-
-        workspace_id = workspace["id"]
-
-        for number in range(1, 6):
-
-            seat_number = f"A{number}"
-
-            cursor.execute("""
-                INSERT OR IGNORE INTO seats
-                (workspace_id, seat_number, status)
-                VALUES (?, ?, 'Available')
-            """, (workspace_id, seat_number))
-
     conn.commit()
-    logging.info("User registered successfully")
     conn.close()
+    logging.info("Database tables checked and updated successfully.")
+
 
 # ---------------- HOME PAGE ----------------
 
 @app.route("/")
 def home():
-
     if "user_id" in session:
         return redirect(url_for("workspaces"))
-
     return redirect(url_for("login"))
+
 
 # ---------------- REGISTER ----------------
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
-
     if request.method == "POST":
-
         name = request.form.get("name", "").strip()
         email = request.form.get("email", "").strip()
         password = request.form.get("password", "")
@@ -181,7 +140,7 @@ def register():
             flash("Please fill all fields.")
             return redirect(url_for("register"))
 
-        if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email):
+        if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
             flash("Please enter a valid email address.")
             return redirect(url_for("register"))
 
@@ -190,23 +149,21 @@ def register():
             return redirect(url_for("register"))
 
         hashed_password = generate_password_hash(password)
-
         conn = connect_db()
 
         try:
-
             conn.execute("""
                 INSERT INTO users (name, email, password)
                 VALUES (?, ?, ?)
             """, (name, email, hashed_password))
 
             conn.commit()
-            logging.info("Seat booked successfully")
+            logging.info("New user registered.")
             flash("Registration successful. Please login.")
 
         except sqlite3.IntegrityError:
             conn.rollback()
-            logging.warning("Duplicate email registration attempted")
+            logging.warning("Duplicate email registration attempted.")
             flash("Email already registered.")
 
         finally:
@@ -216,30 +173,28 @@ def register():
 
     return render_template("register.html")
 
+
 # ---------------- LOGIN ----------------
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
-
     if request.method == "POST":
-
         email = request.form.get("email", "").strip()
         password = request.form.get("password", "")
 
         conn = connect_db()
-
-        user = conn.execute("""
-            SELECT * FROM users
-            WHERE email = ?
-        """, (email,)).fetchone()
-
-        conn.close()
+        try:
+            user = conn.execute("""
+                SELECT *
+                FROM users
+                WHERE email = ?
+            """, (email,)).fetchone()
+        finally:
+            conn.close()
 
         if user and check_password_hash(user["password"], password):
-
             session["user_id"] = user["id"]
             session["user_name"] = user["name"]
-
             return redirect(url_for("workspaces"))
 
         flash("Invalid email or password.")
@@ -251,48 +206,43 @@ def login():
 
 @app.route("/logout")
 def logout():
-
     session.clear()
-
     return redirect(url_for("login"))
+
 
 # ---------------- DASHBOARD ----------------
 
 @app.route("/dashboard")
 def dashboard():
-
     if "user_id" not in session:
         return redirect(url_for("login"))
-
     return redirect(url_for("workspaces"))
+
 
 # ---------------- ADMIN WORKSPACE PAGE ----------------
 
 @app.route("/admin/workspaces")
 def admin_workspaces():
-
     if "user_id" not in session:
         return redirect(url_for("login"))
 
     conn = connect_db()
+    try:
+        workspaces = conn.execute("""
+            SELECT *
+            FROM workspaces
+            ORDER BY id DESC
+        """).fetchall()
+    finally:
+        conn.close()
 
-    workspaces = conn.execute("""
-        SELECT * FROM workspaces
-        ORDER BY id DESC
-    """).fetchall()
+    return render_template("admin_workspaces.html", workspaces=workspaces)
 
-    conn.close()
-
-    return render_template(
-        "admin_workspaces.html",
-        workspaces=workspaces
-    )
 
 # ---------------- ADD WORKSPACE ----------------
 
 @app.route("/admin/add_workspace", methods=["POST"])
 def add_workspace():
-
     if "user_id" not in session:
         return redirect(url_for("login"))
 
@@ -304,67 +254,55 @@ def add_workspace():
         return redirect(url_for("admin_workspaces"))
 
     conn = connect_db()
-
-    conn.execute("""
-        INSERT INTO workspaces (workspace_name, location)
-        VALUES (?, ?)
-    """, (workspace_name, location))
-
-    conn.commit()
-    conn.close()
-
-    flash("Workspace added successfully!")
+    try:
+        conn.execute("""
+            INSERT INTO workspaces (workspace_name, location)
+            VALUES (?, ?)
+        """, (workspace_name, location))
+        conn.commit()
+        flash("Workspace added successfully!")
+    except sqlite3.Error:
+        conn.rollback()
+        logging.exception("Unable to add workspace.")
+        flash("Unable to add workspace.")
+    finally:
+        conn.close()
 
     return redirect(url_for("admin_workspaces"))
+
 
 # ---------------- WORKSPACES ----------------
 
 @app.route("/workspaces")
 def workspaces():
-
     if "user_id" not in session:
         return redirect(url_for("login"))
 
     search = request.args.get("search", "").strip()
-
     conn = connect_db()
 
-    workspace_list = conn.execute("""
-        SELECT
-            w.*,
-            COUNT(s.id) AS total_seats,
-
-            COALESCE(
-                SUM(
-                    CASE
-                        WHEN s.status = 'Available' THEN 1
-                        ELSE 0
-                    END
-                ), 0
-            ) AS available_seats,
-
-            COALESCE(
-                SUM(
-                    CASE
-                        WHEN s.status = 'Booked' THEN 1
-                        ELSE 0
-                    END
-                ), 0
-            ) AS booked_seats
-
-        FROM workspaces w
-
-        LEFT JOIN seats s
-        ON w.id = s.workspace_id
-
-        WHERE w.workspace_name LIKE ?
-        OR w.location LIKE ?
-
-        GROUP BY w.id
-        ORDER BY w.id
-    """, (f"%{search}%", f"%{search}%")).fetchall()
-
-    conn.close()
+    try:
+        workspace_list = conn.execute("""
+            SELECT
+                w.*,
+                COUNT(s.id) AS total_seats,
+                COALESCE(
+                    SUM(CASE WHEN s.status = 'Available' THEN 1 ELSE 0 END),
+                    0
+                ) AS available_seats,
+                COALESCE(
+                    SUM(CASE WHEN s.status = 'Booked' THEN 1 ELSE 0 END),
+                    0
+                ) AS booked_seats
+            FROM workspaces w
+            LEFT JOIN seats s ON w.id = s.workspace_id
+            WHERE w.workspace_name LIKE ?
+               OR w.location LIKE ?
+            GROUP BY w.id
+            ORDER BY w.id
+        """, (f"%{search}%", f"%{search}%")).fetchall()
+    finally:
+        conn.close()
 
     return render_template(
         "workspaces.html",
@@ -372,279 +310,305 @@ def workspaces():
         search=search
     )
 
+
 # ---------------- WORKSPACE DETAILS ----------------
 
 @app.route("/workspace/<int:workspace_id>")
 def workspace_details(workspace_id):
-
     if "user_id" not in session:
         return redirect(url_for("login"))
 
     conn = connect_db()
-
-    workspace = conn.execute("""
-        SELECT * FROM workspaces
-        WHERE id = ?
-    """, (workspace_id,)).fetchone()
-
-    conn.close()
+    try:
+        workspace = conn.execute("""
+            SELECT *
+            FROM workspaces
+            WHERE id = ?
+        """, (workspace_id,)).fetchone()
+    finally:
+        conn.close()
 
     if workspace is None:
-
         flash("Workspace not found.")
-
         return redirect(url_for("workspaces"))
 
-    return render_template(
-        "workspace_details.html",
-        workspace=workspace
-    )
+    return render_template("workspace_details.html", workspace=workspace)
+
 
 # ---------------- DISPLAY SEATS ----------------
 
 @app.route("/workspace/<int:workspace_id>/seats")
 def display_seats(workspace_id):
-
     if "user_id" not in session:
         return redirect(url_for("login"))
 
     conn = connect_db()
 
-    workspace = conn.execute("""
-        SELECT * FROM workspaces
-        WHERE id = ?
-    """, (workspace_id,)).fetchone()
+    try:
+        workspace = conn.execute("""
+            SELECT *
+            FROM workspaces
+            WHERE id = ?
+        """, (workspace_id,)).fetchone()
 
-    if workspace is None:
+        if workspace is None:
+            flash("Workspace not found.")
+            return redirect(url_for("workspaces"))
 
+        seats = conn.execute("""
+            SELECT id, seat_number, status, workspace_id, gender_section
+            FROM seats
+            WHERE workspace_id = ?
+            ORDER BY gender_section, seat_number
+        """, (workspace_id,)).fetchall()
+
+        total_seats = len(seats)
+        available_seats = sum(1 for seat in seats if seat["status"] == "Available")
+        booked_seats = sum(1 for seat in seats if seat["status"] == "Booked")
+
+        return render_template(
+            "seats.html",
+            workspace=workspace,
+            seats=seats,
+            total_seats=total_seats,
+            available_seats=available_seats,
+            booked_seats=booked_seats
+        )
+    finally:
         conn.close()
-        flash("Workspace not found.")
 
-        return redirect(url_for("workspaces"))
 
-    seats = conn.execute("""
-        SELECT * FROM seats
-        WHERE workspace_id = ?
-        ORDER BY seat_number
-    """, (workspace_id,)).fetchall()
+# ---------------- BOOKING DETAILS PAGE ----------------
 
-    total_seats = len(seats)
+@app.route("/booking-details/<int:seat_id>")
+def booking_details(seat_id):
+    if "user_id" not in session:
+        return redirect(url_for("login"))
 
-    available_seats = sum(
-        1 for seat in seats
-        if seat["status"] == "Available"
-    )
+    conn = connect_db()
 
-    booked_seats = sum(
-        1 for seat in seats
-        if seat["status"] == "Booked"
-    )
+    try:
+        seat = conn.execute("""
+            SELECT
+                seats.*,
+                workspaces.workspace_name,
+                workspaces.location
+            FROM seats
+            JOIN workspaces ON seats.workspace_id = workspaces.id
+            WHERE seats.id = ?
+        """, (seat_id,)).fetchone()
 
-    conn.close()
+        user = conn.execute("""
+            SELECT name, email
+            FROM users
+            WHERE id = ?
+        """, (session["user_id"],)).fetchone()
 
-    return render_template(
-        "seats.html",
-        workspace=workspace,
-        seats=seats,
-        total_seats=total_seats,
-        available_seats=available_seats,
-        booked_seats=booked_seats
-    )
+        if seat is None:
+            flash("Seat not found.")
+            return redirect(url_for("workspaces"))
+
+        if seat["status"] != "Available":
+            flash("This seat is not available.")
+            return redirect(url_for(
+                "display_seats",
+                workspace_id=seat["workspace_id"]
+            ))
+
+        return render_template(
+            "booking_details.html",
+            seat=seat,
+            user=user
+        )
+    finally:
+        conn.close()
+
 
 # ---------------- BOOK SEAT ----------------
 
 @app.route("/book-seat/<int:seat_id>", methods=["POST"])
 def book_seat(seat_id):
-
     if "user_id" not in session:
         return redirect(url_for("login"))
 
+    name = request.form.get("name", "").strip()
+    email = request.form.get("email", "").strip()
+    phone_number = request.form.get("phone_number", "").strip()
+
+    if not name or not email or not phone_number:
+        flash("Please fill all fields.")
+        return redirect(url_for("booking_details", seat_id=seat_id))
+
+    if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
+        flash("Enter a valid email address.")
+        return redirect(url_for("booking_details", seat_id=seat_id))
+
+    if not re.fullmatch(r"[0-9]{10}", phone_number):
+        flash("Enter a valid 10-digit phone number.")
+        return redirect(url_for("booking_details", seat_id=seat_id))
+
     conn = connect_db()
+    workspace_id = None
 
     try:
-
-        # Lock database for this booking transaction
         conn.execute("BEGIN IMMEDIATE")
 
         seat = conn.execute("""
-            SELECT * FROM seats
+            SELECT *
+            FROM seats
             WHERE id = ?
         """, (seat_id,)).fetchone()
 
         if seat is None:
-
             conn.rollback()
             flash("Seat not found.")
-
             return redirect(url_for("workspaces"))
 
         workspace_id = seat["workspace_id"]
 
         if seat["status"] != "Available":
-
             conn.rollback()
             flash("This seat is already booked.")
+            return redirect(url_for(
+                "display_seats",
+                workspace_id=workspace_id
+            ))
 
-            return redirect(
-                url_for(
-                    "display_seats",
-                    workspace_id=workspace_id
-                )
-            )
-
-        # Update seat status
         cursor = conn.execute("""
             UPDATE seats
             SET status = 'Booked'
-            WHERE id = ?
-            AND status = 'Available'
+            WHERE id = ? AND status = 'Available'
         """, (seat_id,))
 
         if cursor.rowcount != 1:
-
             conn.rollback()
             flash("Seat is no longer available.")
+            return redirect(url_for(
+                "display_seats",
+                workspace_id=workspace_id
+            ))
 
-            return redirect(
-                url_for(
-                    "display_seats",
-                    workspace_id=workspace_id
-                )
-            )
-
-        # Insert booking details
-        conn.execute("""
+        booking_cursor = conn.execute("""
             INSERT INTO bookings
-            (user_id, seat_id, booking_date, status)
-            VALUES (?, ?, ?, 'Booked')
+                (user_id, seat_id, booking_date, status, name, email, phone_number)
+            VALUES (?, ?, ?, 'Booked', ?, ?, ?)
         """, (
             session["user_id"],
             seat_id,
-            datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            name,
+            email,
+            phone_number
         ))
 
+        booking_id = booking_cursor.lastrowid
+
+        booking = conn.execute("""
+            SELECT
+                b.id AS booking_id,
+                b.name,
+                b.email,
+                b.phone_number,
+                b.booking_date,
+                b.status,
+                s.seat_number,
+                s.workspace_id,
+                w.workspace_name,
+                w.location
+            FROM bookings b
+            JOIN seats s ON b.seat_id = s.id
+            JOIN workspaces w ON s.workspace_id = w.id
+            WHERE b.id = ?
+        """, (booking_id,)).fetchone()
+
+        if booking is None:
+            raise sqlite3.DatabaseError("Booking was saved but details could not be loaded.")
+
         conn.commit()
+        flash("Seat booked successfully!")
+        return render_template("booking_success.html", booking=booking)
 
-        flash("Seat booked successfully.")
-
-        return redirect(
-            url_for(
-                "display_seats",
-                workspace_id=workspace_id
-            )
-        )
-
-    except sqlite3.IntegrityError:
-
+    except sqlite3.IntegrityError as e:
         conn.rollback()
+        logging.exception("Booking database integrity error")
+        flash("This seat already has a booking: " + str(e))
 
-        flash("This seat is already booked.")
+        if workspace_id is not None:
+            return redirect(url_for("display_seats", workspace_id=workspace_id))
+        return redirect(url_for("workspaces"))
 
-        seat = conn.execute("""
-            SELECT workspace_id FROM seats
-            WHERE id = ?
-        """, (seat_id,)).fetchone()
-
-        if seat:
-
-            return redirect(
-                url_for(
-                    "display_seats",
-                    workspace_id=seat["workspace_id"]
-                )
-            )
-
+    except Exception as e:
+        conn.rollback()
+        logging.exception("Booking failed")
+        flash("Booking failed: " + str(e))
         return redirect(url_for("workspaces"))
 
     finally:
-
         conn.close()
+
 
 # ---------------- MY BOOKINGS ----------------
 
 @app.route("/my-bookings")
 def my_bookings():
-
     if "user_id" not in session:
         return redirect(url_for("login"))
 
     conn = connect_db()
+    try:
+        bookings = conn.execute("""
+            SELECT
+                b.id AS booking_id,
+                b.booking_date,
+                b.status,
+                s.seat_number,
+                w.workspace_name,
+                w.location
+            FROM bookings b
+            JOIN seats s ON b.seat_id = s.id
+            JOIN workspaces w ON s.workspace_id = w.id
+            WHERE b.user_id = ?
+            ORDER BY b.id DESC
+        """, (session["user_id"],)).fetchall()
+    finally:
+        conn.close()
 
-    bookings = conn.execute("""
-        SELECT
-            b.id AS booking_id,
-            b.booking_date,
-            b.status,
-            s.seat_number,
-            w.workspace_name,
-            w.location
+    return render_template("my_bookings.html", bookings=bookings)
 
-        FROM bookings b
-
-        JOIN seats s
-        ON b.seat_id = s.id
-
-        JOIN workspaces w
-        ON s.workspace_id = w.id
-
-        WHERE b.user_id = ?
-
-        ORDER BY b.id DESC
-    """, (session["user_id"],)).fetchall()
-
-    conn.close()
-
-    return render_template(
-        "my_bookings.html",
-        bookings=bookings
-    )
 
 # ---------------- CANCEL BOOKING ----------------
 
 @app.route("/cancel-booking/<int:booking_id>", methods=["POST"])
 def cancel_booking(booking_id):
-
     if "user_id" not in session:
         return redirect(url_for("login"))
 
     conn = connect_db()
 
     try:
-
-        # Start transaction
         conn.execute("BEGIN IMMEDIATE")
 
         booking = conn.execute("""
-            SELECT * FROM bookings
+            SELECT *
+            FROM bookings
             WHERE id = ?
-            AND user_id = ?
-            AND status = 'Booked'
-        """, (
-            booking_id,
-            session["user_id"]
-        )).fetchone()
+              AND user_id = ?
+              AND status = 'Booked'
+        """, (booking_id, session["user_id"])).fetchone()
 
         if booking is None:
-
             conn.rollback()
-
             flash("Booking not found or already cancelled.")
-
             return redirect(url_for("my_bookings"))
 
-        # Update booking status
         conn.execute("""
             UPDATE bookings
             SET status = 'Cancelled'
             WHERE id = ?
-            AND user_id = ?
-            AND status = 'Booked'
-        """, (
-            booking_id,
-            session["user_id"]
-        ))
+              AND user_id = ?
+              AND status = 'Booked'
+        """, (booking_id, session["user_id"]))
 
-        # Make seat available again
         conn.execute("""
             UPDATE seats
             SET status = 'Available'
@@ -652,17 +616,14 @@ def cancel_booking(booking_id):
         """, (booking["seat_id"],))
 
         conn.commit()
-
         flash("Booking cancelled successfully.")
 
     except sqlite3.Error:
-
         conn.rollback()
-
+        logging.exception("Unable to cancel booking.")
         flash("Unable to cancel booking. Please try again.")
 
     finally:
-
         conn.close()
 
     return redirect(url_for("my_bookings"))
@@ -672,29 +633,28 @@ def cancel_booking(booking_id):
 
 @app.route("/admin")
 def admin_dashboard():
-
     if "user_id" not in session:
         return redirect(url_for("login"))
 
     conn = connect_db()
+    try:
+        total_workspaces = conn.execute(
+            "SELECT COUNT(*) FROM workspaces"
+        ).fetchone()[0]
 
-    total_workspaces = conn.execute(
-        "SELECT COUNT(*) FROM workspaces"
-    ).fetchone()[0]
+        total_seats = conn.execute(
+            "SELECT COUNT(*) FROM seats"
+        ).fetchone()[0]
 
-    total_seats = conn.execute(
-        "SELECT COUNT(*) FROM seats"
-    ).fetchone()[0]
+        total_users = conn.execute(
+            "SELECT COUNT(*) FROM users"
+        ).fetchone()[0]
 
-    total_users = conn.execute(
-        "SELECT COUNT(*) FROM users"
-    ).fetchone()[0]
-
-    active_bookings = conn.execute(
-        "SELECT COUNT(*) FROM bookings WHERE status = 'Booked'"
-    ).fetchone()[0]
-
-    conn.close()
+        active_bookings = conn.execute(
+            "SELECT COUNT(*) FROM bookings WHERE status = 'Booked'"
+        ).fetchone()[0]
+    finally:
+        conn.close()
 
     return render_template(
         "admin_dashboard.html",
@@ -705,33 +665,35 @@ def admin_dashboard():
         active_bookings=active_bookings
     )
 
+
 # ---------------- ADMIN MANAGE SEATS ----------------
 
 @app.route("/admin/seats")
 def admin_seats():
-
     if "user_id" not in session:
         return redirect(url_for("login"))
 
     conn = connect_db()
+    try:
+        seats = conn.execute("""
+            SELECT
+                seats.id,
+                seats.seat_number,
+                seats.status,
+                seats.workspace_id,
+                seats.gender_section,
+                workspaces.workspace_name
+            FROM seats
+            JOIN workspaces ON seats.workspace_id = workspaces.id
+            ORDER BY seats.id DESC
+        """).fetchall()
 
-    seats = conn.execute("""
-        SELECT seats.id,
-               seats.seat_number,
-               seats.status,
-               seats.workspace_id,
-               workspaces.workspace_name
-        FROM seats
-        JOIN workspaces
-        ON seats.workspace_id = workspaces.id
-        ORDER BY seats.id DESC
-    """).fetchall()
-
-    workspaces = conn.execute("""
-        SELECT * FROM workspaces
-    """).fetchall()
-
-    conn.close()
+        workspaces = conn.execute("""
+            SELECT *
+            FROM workspaces
+        """).fetchall()
+    finally:
+        conn.close()
 
     return render_template(
         "admin_seats.html",
@@ -739,132 +701,143 @@ def admin_seats():
         workspaces=workspaces
     )
 
-# ---------------- ADD NEW SEAT ----------------
+
+# ---------------- ADD ADMIN SEAT ----------------
 
 @app.route("/admin/seats/add", methods=["POST"])
 def add_admin_seat():
-
     if "user_id" not in session:
         return redirect(url_for("login"))
 
-    seat_number = request.form.get("seat_number")
-    workspace_id = request.form.get("workspace_id")
+    seat_number = request.form.get("seat_number", "").strip()
+    workspace_id = request.form.get("workspace_id", "").strip()
+    gender_section = request.form.get("gender_section", "")
 
-    if not seat_number or not workspace_id:
-        return "Please fill all fields"
+    if not seat_number or not workspace_id or gender_section not in ["Male", "Female"]:
+        flash("Please fill all fields correctly.")
+        return redirect(url_for("admin_seats"))
 
     conn = connect_db()
+    try:
+        conn.execute("""
+            INSERT INTO seats (workspace_id, seat_number, status, gender_section)
+            VALUES (?, ?, 'Available', ?)
+        """, (workspace_id, seat_number, gender_section))
+        conn.commit()
+        flash("Seat added successfully!")
 
-    workspace = conn.execute(
-        "SELECT id FROM workspaces WHERE id = ?",
-        (workspace_id,)
-    ).fetchone()
+    except sqlite3.IntegrityError:
+        conn.rollback()
+        flash("Seat number already exists in this workspace.")
 
-    if workspace is None:
+    except sqlite3.Error:
+        conn.rollback()
+        logging.exception("Unable to add seat.")
+        flash("Unable to add seat.")
+
+    finally:
         conn.close()
-        return "Workspace not found"
-
-    conn.execute("""
-        INSERT INTO seats (workspace_id, seat_number, status)
-        VALUES (?, ?, 'Available')
-    """, (workspace_id, seat_number))
-
-    conn.commit()
-    conn.close()
 
     return redirect(url_for("admin_seats"))
+
 
 # ---------------- UPDATE SEAT ----------------
 
 @app.route("/admin/seats/update/<int:seat_id>", methods=["POST"])
 def update_admin_seat(seat_id):
-
     if "user_id" not in session:
         return redirect(url_for("login"))
 
-    seat_number = request.form.get("seat_number")
-    workspace_id = request.form.get("workspace_id")
+    seat_number = request.form.get("seat_number", "").strip()
+    workspace_id = request.form.get("workspace_id", "").strip()
+    gender_section = request.form.get("gender_section", "")
 
-    if not seat_number or not workspace_id:
-        return "Please fill all fields"
+    if not seat_number or not workspace_id or gender_section not in ["Male", "Female"]:
+        return "Please fill all fields correctly"
 
     conn = connect_db()
+    try:
+        seat = conn.execute(
+            "SELECT status FROM seats WHERE id = ?",
+            (seat_id,)
+        ).fetchone()
 
-    seat = conn.execute(
-        "SELECT status FROM seats WHERE id = ?",
-        (seat_id,)
-    ).fetchone()
+        if seat is None:
+            return "Seat not found"
 
-    if seat is None:
+        if seat["status"] != "Available":
+            return "Only available seats can be updated"
+
+        conn.execute("""
+            UPDATE seats
+            SET seat_number = ?, workspace_id = ?, gender_section = ?
+            WHERE id = ?
+        """, (seat_number, workspace_id, gender_section, seat_id))
+
+        conn.commit()
+        flash("Seat updated successfully!")
+        return redirect(url_for("admin_seats"))
+
+    except sqlite3.IntegrityError:
+        conn.rollback()
+        return "Seat number already exists in this workspace"
+
+    finally:
         conn.close()
-        return "Seat not found"
 
-    if seat["status"] == "Booked":
-        conn.close()
-        return "Cannot update a booked seat"
-
-    conn.execute("""
-        UPDATE seats
-        SET seat_number = ?, workspace_id = ?
-        WHERE id = ?
-    """, (seat_number, workspace_id, seat_id))
-
-    conn.commit()
-    conn.close()
-
-    return redirect(url_for("admin_seats"))
 
 # ---------------- DEACTIVATE SEAT ----------------
 
 @app.route("/admin/seats/deactivate/<int:seat_id>", methods=["POST"])
 def deactivate_admin_seat(seat_id):
-
     if "user_id" not in session:
         return redirect(url_for("login"))
 
     conn = connect_db()
+    try:
+        seat = conn.execute(
+            "SELECT status FROM seats WHERE id = ?",
+            (seat_id,)
+        ).fetchone()
 
-    seat = conn.execute(
-        "SELECT status FROM seats WHERE id = ?",
-        (seat_id,)
-    ).fetchone()
+        if seat is None:
+            return "Seat not found"
 
-    if seat is None:
+        if seat["status"] == "Booked":
+            return "Cannot deactivate a booked seat"
+
+        conn.execute("""
+            UPDATE seats
+            SET status = 'Inactive'
+            WHERE id = ?
+        """, (seat_id,))
+
+        conn.commit()
+        flash("Seat deactivated successfully!")
+        return redirect(url_for("admin_seats"))
+
+    finally:
         conn.close()
-        return "Seat not found"
 
-    if seat["status"] == "Booked":
-        conn.close()
-        return "Cannot deactivate a booked seat"
 
-    conn.execute("""
-        UPDATE seats
-        SET status = 'Inactive'
-        WHERE id = ?
-    """, (seat_id,))
+# ---------------- ERROR HANDLERS ----------------
 
-    conn.commit()
-    conn.close()
-
-    return redirect(url_for("admin_seats"))
-
-# ---------------- RUN APPLICATION ----------------
 @app.errorhandler(404)
 def page_not_found(error):
-    logging.warning("Page not found")
+    logging.warning("Page not found: %s", request.path)
     return "Page Not Found", 404
 
 
 @app.errorhandler(500)
 def server_error(error):
-    logging.error("Internal Server Error")
-    return "Something went wrong", 500
+    logging.exception("Internal Server Error")
+    return "Something went wrong. Check app.log for details.", 500
+
+
+# ---------------- RUN APPLICATION ----------------
 
 if __name__ == "__main__":
-
     create_table()
-
     app.run(debug=False)
 
 
-    

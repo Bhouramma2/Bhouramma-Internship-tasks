@@ -1,0 +1,138 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Booking Successful</title>
+
+    <style>
+        body {
+            font-family: Arial;
+            background: #eef3fa;
+            margin: 0;
+            padding: 30px 15px;
+            color: #26364a;
+        }
+
+        .container {
+            max-width: 700px;
+            margin: auto;
+            background: white;
+            padding: 30px;
+            border-radius: 18px;
+            box-shadow: 0 5px 20px #d5deea;
+        }
+
+        .success {
+            text-align: center;
+            color: #219653;
+        }
+
+        .check {
+            font-size: 65px;
+        }
+
+        .reference {
+            background: #e8f7ee;
+            padding: 15px;
+            text-align: center;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        h3 {
+            color: #245b91;
+            border-bottom: 2px solid #e5edf5;
+            padding-bottom: 10px;
+        }
+
+        .details {
+            background: #f5f8fc;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        .details p {
+            margin: 12px 0;
+        }
+
+        .status {
+            color: #219653;
+            font-weight: bold;
+        }
+
+        .buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 25px;
+        }
+
+        .buttons a {
+            flex: 1;
+            min-width: 120px;
+            text-align: center;
+            padding: 13px;
+            background: #245b91;
+            color: white;
+            text-decoration: none;
+            border-radius: 7px;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <div class="success">
+        <div class="check">✔</div>
+        <h1>Booking Successful!</h1>
+        <p>Your workspace has been successfully booked.</p>
+    </div>
+
+    <div class="reference">
+        <b>Booking Reference ID</b>
+        <h2>#{{ booking.booking_id }}</h2>
+    </div>
+
+    <h3>User Details</h3>
+
+    <div class="details">
+        <p><b>Name:</b> {{ booking.name }}</p>
+        <p><b>Email:</b> {{ booking.email }}</p>
+        <p><b>Phone Number:</b> {{ booking.phone_number }}</p>
+    </div>
+
+    <h3>Booking Details</h3>
+
+    <div class="details">
+        <p><b>Workspace:</b> {{ booking.workspace_name }}</p>
+        <p><b>Location:</b> {{ booking.location }}</p>
+        <p><b>Booking Date:</b> {{ booking.booking_date }}</p>
+        <p><b>Seat Number:</b> {{ booking.seat_number }}</p>
+        <p><b>Booking Status:</b>
+            <span class="status">{{ booking.status }}</span>
+        </p>
+    </div>
+
+    <div class="buttons">
+
+    <a href="{{ url_for('display_seats',
+        workspace_id=booking.workspace_id) }}">
+        View Seats
+    </a>
+
+    <a href="{{ url_for('my_bookings') }}">
+        My Bookings
+    </a>
+
+    <a href="{{ url_for('workspaces') }}">
+        Workspaces
+    </a>
+
+</div>
+</div>
+
+</body>
+</html>
